@@ -4,12 +4,14 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# set openai api key
+os.environ['OPENAI_API_KEY'] = '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'
 # Load environment variables from .env file
 load_dotenv()
 openai = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 # Initialize OpenAI API
-openai_api_key = os.getenv('OPEN_AI_KEY')
-openai.api_key = openai_api_key
+# openai_api_key = os.getenv('OPEN_AI_KEY')
+# openai.api_key = openai_api_key
 
 # Function to read content from a text file
 def read_from_file(uploaded_file):
