@@ -9,7 +9,7 @@ from pyalex import Works, Authors, Sources, Institutions, Topics, Publishers, Fu
 
 # Fetch the OpenAI API key from environment variables
 openai_api_key = st.secrets["OPENAI_API_KEY"] #os.getenv('OPENAI_API_KEY')
-openai = OpenAI(openai_api_key)
+openai = OpenAI()
 # Check if the API key is available
 if not openai_api_key:
     raise ValueError("OpenAI API key is not set. Check your environment or GitHub Secrets.")
