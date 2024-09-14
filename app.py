@@ -7,8 +7,6 @@ import pyalex
 import requests
 from pyalex import Works, Authors, Sources, Institutions, Topics, Publishers, Funders
 
-# set openai api key
-os.environ['OPENAI_API_KEY'] = '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'
 # Load environment variables from .env file
 load_dotenv()
 openai = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
