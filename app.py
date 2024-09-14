@@ -8,7 +8,7 @@ from openai import OpenAI
 load_dotenv()
 openai = OpenAI()
 # Initialize OpenAI API
-openai_api_key = os.getenv('OPEN-AI-KEY')
+openai_api_key = os.getenv('OPEN_AI_KEY')
 openai.api_key = openai_api_key
 
 # Function to read content from a text file
