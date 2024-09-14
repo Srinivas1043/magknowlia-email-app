@@ -68,18 +68,28 @@ def main():
                     authors = row['Authors']
 
                     # First mail prompt
-                    prompt_mail_1 = f"""
-                    Below are two pieces of text. The first is the abstract of an article written by {authors} 
-                    on Alzheimer. The second is information about www.euretos.com, a platform providing data-driven 
-                    insights and their capabilities when it comes to Alzheimer's disease. Please highlight the capabilities 
-                    of Euretos in helping their research specifically and provide only the core content as output.
+                    prompt_mail_1 = prompt_mail_1 = f"""
+                        Below are two pieces of text. The first is the abstract of an article written by {authors}. 
+                        The second is the capabilities of Euretos in aiding their research. 
+
+                        Please generate only the core content of the body of an email without any salutations or subject,
+                        with the following structure:
+
+                        1. Abstract Information - Understanding - Summary: 
+                        Summarize the abstract information provided below, highlighting the key points and relevance of the research.
+
+                        Abstract:
+                        {abstract}
+
+                        2. Company Information + Abstract Information - How Euretos Helps the Research:
+                        Explain how Euretos can specifically help in advancing the research, drawing on the details provided below. 
+                        Focus on how Euretos's capabilities align with the research needs.
+
+                        Euretos Information:
+                        {euretos_information}
+                        """
+
                     
-                    Abstract:
-                    {abstract}
-                    
-                    Euretos Information:
-                    {euretos_information}
-                    """
                     mail_1 = generate_email(prompt_mail_1)
 
                     # Reminder 1
