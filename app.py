@@ -129,7 +129,8 @@ def main():
 
                     # First mail prompt
                         # First mail prompt
-                        prompt_mail_1 = prompt_mail_1 = f"""
+                        
+                        prompt_mail_1 =  f"""
                         Below are two pieces of text. The first is the abstract of an article written by {authors}. 
                         The second is the capabilities of Euretos in aiding their research. 
 
@@ -149,7 +150,12 @@ def main():
                         Euretos Information:
                         {euretos_information}
                         """
+
                         mail_1 = generate_email(prompt_mail_1)
+
+
+                    
+               
 
                     # Reminder 1
                         prompt_reminder_1 = f""" 
