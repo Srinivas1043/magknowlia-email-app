@@ -6,9 +6,9 @@ from openai import OpenAI
 
 # Load environment variables from .env file
 load_dotenv()
-openai = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+openai = OpenAI()
 # Initialize OpenAI API
-openai_api_key = os.getenv('OPENAI_API_KEY')
+openai_api_key = os.getenv('OPEN-AI-KEY')
 openai.api_key = openai_api_key
 
 # Function to read content from a text file
