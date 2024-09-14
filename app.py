@@ -8,12 +8,16 @@ import requests
 from pyalex import Works, Authors, Sources, Institutions, Topics, Publishers, Funders
 
 # Load environment variables from .env file
-load_dotenv()
+#load_dotenv()
 openai = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 # Initialize OpenAI API
-# openai_api_key = os.getenv('OPEN_AI_KEY')
-# openai.api_key = openai_api_key
+openai_api_key = os.getenv('OPENAI_API_KEY')
+openai.api_key = openai_api_key
 
+# Check if the API key is set
+if not openai_api_key:
+    st.error("OpenAI API key is not set. Please check your environment or GitHub secrets.")
+    raise ValueError("OpenAI API key is missing.")
 
 # Function to fetch journal titles and other details from OpenAlex API
 def fetch_journal_titles_from_openalex(url, size_requested):
