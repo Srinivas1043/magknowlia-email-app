@@ -218,27 +218,27 @@ def main():
                         portal_mail = generate_email(prompt_mail_on_portal)
 
                         # Store generated emails in the dataframe
-                        final_df.loc[index, 'Mail_1'] = mail_1
-                        final_df.loc[index, 'Reminder_1'] = reminder_1
-                        final_df.loc[index, 'Reminder_2'] = reminder_2
-                        final_df.loc[index, 'Search_mail'] = search_mail
-                        final_df.loc[index, 'Analytics_mail'] = analytics_mail
-                        final_df.loc[index, 'KG_mail'] = KG_mail
-                        final_df.loc[index, 'Portal_mail'] = portal_mail
+                        fetched_data.loc[index, 'Mail_1'] = mail_1
+                        fetched_data.loc[index, 'Reminder_1'] = reminder_1
+                        fetched_data.loc[index, 'Reminder_2'] = reminder_2
+                        fetched_data.loc[index, 'Search_mail'] = search_mail
+                        fetched_data.loc[index, 'Analytics_mail'] = analytics_mail
+                        fetched_data.loc[index, 'KG_mail'] = KG_mail
+                        fetched_data.loc[index, 'Portal_mail'] = portal_mail
 
                     # Display the dataframe with generated emails
                     st.write("Generated Emails:")
-                    st.write(final_df)
+                    st.write(fetched_data)
 
                     # split the Authors column into individual authors per row 
-                    final_df_split = final_df['Authors'].str.split(';', expand=True)
+                    final_df_split = fetched_data['Authors'].str.split(';', expand=True)
 
                     # Remove any leading/trailing whitespaces and empty strings
                     final_df_split = final_df_split.applymap(lambda x: x.strip() if isinstance(x, str) else x)
                     final_df_split = final_df_split.replace('', None) 
 
                     # Allow user to download the result as CSV
-                    csv = final_df.to_csv(index=False).encode('utf-8')
+                    csv = final_df_split.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="Download Generated Emails as CSV",
                         data=csv,
