@@ -84,7 +84,7 @@ def read_from_file(uploaded_file):
 # Function to generate email content using OpenAI GPT
 def generate_email(prompt):
     messages = [{"role" : "system", 
-                "content": "You are a message assistant. Please generate a single-paragraph body of the email related to the abstract. Ensure the content is in paragraph form without any greetings, numbered sections, or closing remarks."},
+                "content": "You are a message assistant. Please generate a single or two paragraph body of the email related to the abstract and euretos information provided by the prompt. Ensure the content is in paragraph form without any greetings, numbered sections, or closing remarks."},
                 {"role" : "user", "content": prompt}]
 
     response = openai.chat.completions.create(
@@ -139,7 +139,6 @@ def main():
                         authors = row['Authors']
 
                     # First mail prompt
-                        # First mail prompt
                         
                         prompt_mail_1 = f"""
                         Write the body of an email to author based on the following information.
@@ -164,8 +163,7 @@ def main():
                         {euretos_information}
 
                         Note:
-                        1. Use author_name as a placeholder for the author's name.
-                        2. Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author without 
+                        1. Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author without 
                         any bullet points or lists. Make sure it is a paragraph wise.
                         """
 
@@ -185,7 +183,6 @@ def main():
                         Previous Email:
                         {mail_1}
 
-                        Use author_name as a placeholder for the author's name.
                         Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         reminder_1 = generate_email(prompt_reminder_1)
@@ -201,7 +198,6 @@ def main():
                         Previous Email:
                         {mail_1}
 
-                        Use author_name as a placeholder for the author's name.
                         Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         reminder_2 = generate_email(prompt_reminder_2)
@@ -230,7 +226,6 @@ def main():
                         Abstract:
                         {abstract}
 
-                        Use author_name as a placeholder for the author's name.
                         Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         analytics_mail = generate_email(prompt_mail_on_analytics)
@@ -245,7 +240,6 @@ def main():
                         Abstract:
                         {abstract}
 
-                        Use author_name as a placeholder for the author's name.
                         Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         KG_mail = generate_email(prompt_mail_on_KG)
@@ -253,14 +247,13 @@ def main():
                         # Portal mail
                         prompt_mail_on_portal = f"""
                         Write the body of an email to author based on the following information.
-                        
+
                         Please go to https://www.euretos.com/portal and describe the capabilities of the Euretos portal
                         in relation to the research described in the abstract.
                     
                         Abstract:
                         {abstract}
 
-                        Use author_name as a placeholder for the author's name.
                         Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         portal_mail = generate_email(prompt_mail_on_portal)
@@ -285,14 +278,27 @@ def main():
                     st.write("Generated Emails:")
                     st.write(fetched_data)
 
-                    # Allow user to download the result as CSV
-                    csv = fetched_data.to_csv(index=False).encode('utf-8')
-                    st.download_button(
+                    # Allow the user to choose between CSV or Excel download
+                    file_format = st.radio("Choose a file format to download", ('CSV', 'Excel'))
+                    if file_format == 'Excel':
+                        # Allow user to download the result as Excel
+                        excel = fetched_data.to_excel(index=False)
+                        st.download_button(
+                            label="Download Generated Emails as Excel",
+                            data=excel,
+                            file_name="generated_emails.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                    else:
+
+                        # Allow user to download the result as CSV
+                        csv = fetched_data.to_csv(index=False).encode('utf-8')
+                        st.download_button(
                         label="Download Generated Emails as CSV",
                         data=csv,
                         file_name="generated_emails.csv",
                         mime="text/csv"
-                    )
+                        )
 
 if __name__ == "__main__":
     main()
