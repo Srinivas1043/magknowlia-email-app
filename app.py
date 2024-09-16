@@ -291,6 +291,21 @@ def main():
                         mime="text/csv"
                     )
 
+                    # Convert DataFrame to Excel in memory
+                    to_excel = BytesIO()
+                    with pd.ExcelWriter(to_excel, engine='xlsxwriter') as writer:
+                        fetched_data.to_excel(writer, index=False)
+                        writer.save()
+                    to_excel.seek(0)  # Go back to the start of the stream
+
+                    # Allow user to download the result as Excel
+                    st.download_button(
+                        label="Download Generated Emails as Excel",
+                        data=to_excel.getvalue(),
+                        file_name="generated_emails.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+
 if __name__ == "__main__":
     main()
 
