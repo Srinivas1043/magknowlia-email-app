@@ -155,9 +155,7 @@ def main():
 
                         mail_1 = generate_email(prompt_mail_1)
 
-
-                    
-               
+                        
 
                     # Reminder 1
                         prompt_reminder_1 = f""" 
@@ -218,7 +216,14 @@ def main():
                         {abstract}
                         """
                         portal_mail = generate_email(prompt_mail_on_portal)
-
+                        # Update progress
+                        progress = int((index + 1) / len(fetched_data) * 100)
+                        progress_bar.progress(progress)
+                    
+               
+                        # Show random facts to keep user engaged
+                        if index % 3 == 0:
+                            st.info("Did you know? You can leverage AI to analyze thousands of research papers in minutes!")
                         # Store generated emails in the dataframe
                         fetched_data.loc[index, 'Mail_1'] = mail_1
                         fetched_data.loc[index, 'Reminder_1'] = reminder_1
@@ -228,6 +233,8 @@ def main():
                         fetched_data.loc[index, 'KG_mail'] = KG_mail
                         fetched_data.loc[index, 'Portal_mail'] = portal_mail
 
+                    progress_bar.progress(100)
+                    st.success("All emails generated successfully!")
                     # Display the dataframe with generated emails
                     st.write("Generated Emails:")
                     st.write(fetched_data)
