@@ -294,9 +294,8 @@ def main():
 
                     # Convert DataFrame to Excel in memory
                     to_excel = BytesIO()
-                    with pd.ExcelWriter(to_excel, engine='xlsxwriter') as writer:
+                    with pd.ExcelWriter(to_excel, engine='openpyxl', mode='wb') as writer:
                         fetched_data.to_excel(writer, index=False)
-                        writer.save()
                     to_excel.seek(0)  # Go back to the start of the stream
 
                     # Allow user to download the result as Excel
