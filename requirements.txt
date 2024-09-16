@@ -4,3 +4,4 @@ openai
 python-dotenv
 pyalex
 xlsxwriter
+openpyxl
