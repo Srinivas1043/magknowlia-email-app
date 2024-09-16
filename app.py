@@ -282,13 +282,15 @@ def main():
                     st.write("Generated Emails:")
                     st.write(fetched_data)
 
+                    #get today date time and replace : with - to avoid error in file name
+                    today = pd.Timestamp.now().strftime('%Y-%m-%d %H-%M-%S')
                     
                     # Allow user to download the result as CSV
                     csv = fetched_data.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="Download Generated Emails as CSV",
                         data=csv,
-                        file_name="generated_emails.csv",
+                        file_name=f"generated_emails_{today}.csv",
                         mime="text/csv"
                     )
 
@@ -297,12 +299,13 @@ def main():
                     with pd.ExcelWriter(to_excel, engine='openpyxl', mode='wb') as writer:
                         fetched_data.to_excel(writer, index=False)
                     to_excel.seek(0)  # Go back to the start of the stream
+                    
 
                     # Allow user to download the result as Excel
                     st.download_button(
                         label="Download Generated Emails as Excel",
                         data=to_excel.getvalue(),
-                        file_name="generated_emails.xlsx",
+                        file_name=f"generated_emails_{today}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
 
