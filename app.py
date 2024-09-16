@@ -115,7 +115,7 @@ def main():
         if len(fetched_data) == 0:
             st.warning("No data found for the given link. Kindly check the link : https://api.openalex.org/works{openalex_link} if there is data showing up!")
         else:
-            st.write("Data fetched successfully!")
+            st.write("Data fetched successfully! Totally fetched records: ", len(fetched_data))
             st.write(fetched_data)
             euretos_information = euretos_information
             
@@ -233,7 +233,7 @@ def main():
                     st.write(fetched_data)
 
                     # Allow user to download the result as CSV
-                    csv = final_df_split.to_csv(index=False).encode('utf-8')
+                    csv = fetched_data.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="Download Generated Emails as CSV",
                         data=csv,
