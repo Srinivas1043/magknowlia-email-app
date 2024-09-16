@@ -6,6 +6,7 @@ from openai import OpenAI
 import pyalex
 import requests
 from pyalex import Works, Authors, Sources, Institutions, Topics, Publishers, Funders
+from io import BytesIO
 
 # Set the title and description
 st.set_page_config(page_title="Email Generator Tool", page_icon="📧", layout="wide")
