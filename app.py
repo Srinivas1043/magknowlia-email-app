@@ -122,7 +122,9 @@ def main():
         # Generate emails based on the abstracts and euretos information
             if euretos_information is not None:
                 if st.button("Generate Emails"):
-                    st.write("Generating emails...")
+                    st.write("Generating emails... This may take a few minutes  🕒 ")
+                    progress_bar = st.progress(0)
+
 
                 # Loop through each abstract and generate multiple emails
                     for index, row in fetched_data.iterrows():
@@ -155,7 +157,9 @@ def main():
 
                         mail_1 = generate_email(prompt_mail_1)
 
-                        
+                        # Update progress
+                        progress = int((index + 1) / len(fetched_data) * 100)
+                        progress_bar.progress(progress)
 
                     # Reminder 1
                         prompt_reminder_1 = f""" 
@@ -167,6 +171,7 @@ def main():
                         """
                         reminder_1 = generate_email(prompt_reminder_1)
 
+
                         # Reminder 2
                         prompt_reminder_2 = f""" 
                         Based on the previous message, please write a shorter version of the previous email focusing more on the research 
@@ -177,6 +182,7 @@ def main():
                         """
                         reminder_2 = generate_email(prompt_reminder_2)
 
+
                         # Search mail
                         prompt_mail_on_search = f"""
                         Please go to https://www.euretos.com/search and describe the search capabilities of Euretos
@@ -186,6 +192,7 @@ def main():
                         {abstract}
                         """
                         search_mail = generate_email(prompt_mail_on_search)
+
 
                         # Analytics mail
                         prompt_mail_on_analytics = f""" 
@@ -216,9 +223,7 @@ def main():
                         {abstract}
                         """
                         portal_mail = generate_email(prompt_mail_on_portal)
-                        # Update progress
-                        progress = int((index + 1) / len(fetched_data) * 100)
-                        progress_bar.progress(progress)
+                        
                     
                
                         # Show random facts to keep user engaged
