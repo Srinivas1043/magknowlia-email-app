@@ -83,8 +83,9 @@ def read_from_file(uploaded_file):
 
 # Function to generate email content using OpenAI GPT
 def generate_email(prompt):
-    messages = [{"role" : "system", "content": "You are a message assistant. Please generate only the body of the email for an abstract. Do not include any subject, greetings, or closing remarks."}
-                ,{"role" : "user", "content": prompt}]
+    messages = [{"role" : "system", 
+                "content": "You are a message assistant. Please generate a single-paragraph body of the email related to the abstract. Ensure the content is in paragraph form without any greetings, numbered sections, or closing remarks."},
+                {"role" : "user", "content": prompt}]
 
     response = openai.chat.completions.create(
         model="gpt-4o-mini",  # Choose the desired model
@@ -141,6 +142,8 @@ def main():
                         # First mail prompt
                         
                         prompt_mail_1 = f"""
+                        Write the body of an email to author based on the following information.
+
                         Below are two pieces of text. The first is the abstract of an article. 
                         The second is the capabilities of Euretos in aiding their research. 
 
@@ -160,8 +163,9 @@ def main():
                         Euretos Information:
                         {euretos_information}
 
-                        Use author_name as a placeholder for the author's name.
-                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author without 
+                        Note:
+                        1. Use author_name as a placeholder for the author's name.
+                        2. Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author without 
                         any bullet points or lists. Make sure it is a paragraph wise.
                         """
 
@@ -173,6 +177,8 @@ def main():
 
                     # Reminder 1
                         prompt_reminder_1 = f""" 
+                        Write the body of an email to author based on the following information.
+
                         Based on the previous message sent regarding the capabilities of Euretos in helping their research,
                         please write only the body of the email without salutations based on a shortened version of the previous email.
                     
@@ -187,6 +193,8 @@ def main():
 
                         # Reminder 2
                         prompt_reminder_2 = f""" 
+                        Write the body of an email to author based on the following information.
+
                         Based on the previous message, please write a shorter version of the previous email focusing more on the research 
                         and less on Euretos capabilities.
                     
@@ -201,6 +209,8 @@ def main():
 
                         # Search mail
                         prompt_mail_on_search = f"""
+                        Write the body of an email to author based on the following information.
+
                         Please go to https://www.euretos.com/search and describe the search capabilities of Euretos
                         related to the research described in the abstract.
                     
@@ -212,6 +222,8 @@ def main():
 
                         # Analytics mail
                         prompt_mail_on_analytics = f""" 
+                        Write the body of an email to author based on the following information.
+
                         Please go to https://www.euretos.com/euretos-analytics and describe the analytical capabilities of Euretos.
                         Refer to the research described in the abstract.
                     
@@ -225,6 +237,8 @@ def main():
 
                         # Knowledge Graph mail
                         prompt_mail_on_KG = f"""
+                        Write the body of an email to author based on the following information.
+
                         Please go to https://www.euretos.com/knowledge-graph and describe how the knowledge graphs provided by Euretos 
                         can be of use for the research described in the abstract.
                     
@@ -238,6 +252,8 @@ def main():
 
                         # Portal mail
                         prompt_mail_on_portal = f"""
+                        Write the body of an email to author based on the following information.
+                        
                         Please go to https://www.euretos.com/portal and describe the capabilities of the Euretos portal
                         in relation to the research described in the abstract.
                     
