@@ -7,6 +7,11 @@ import pyalex
 import requests
 from pyalex import Works, Authors, Sources, Institutions, Topics, Publishers, Funders
 
+# Set the title and description
+st.set_page_config(page_title="Email Generator Tool", page_icon="📧", layout="wide")
+
+
+
 # Fetch the OpenAI API key from environment variables
 openai_api_key = st.secrets["OPENAI_API_KEY"] #os.getenv('OPENAI_API_KEY')
 openai = OpenAI()
@@ -16,6 +21,7 @@ if not openai_api_key:
 
 # Initialize OpenAI API
 openai.api_key = openai_api_key
+
 
 # Function to fetch journal titles and other details from OpenAlex API
 def fetch_journal_titles_from_openalex(url, size_requested):
@@ -94,15 +100,12 @@ def generate_email(prompt):
     email = response.choices[0].message.content
     return email
 
-# Function to insert author name into the pre-generated email content
-def insert_author_into_email(email_body, author):
-    # You can modify this as needed to fit where the author's name should appear in the email body
-    personalized_email = email_body.replace("{author_name}", author)
-    return personalized_email
-
 # Streamlit app
 def main():
-    st.title("Email Generator App")
+    
+    
+    st.title("📧 AI-Powered Email Generator")
+    st.markdown("This tool helps you generate personalized emails to authors based on research abstracts and Euretos data.")
 
     # File upload for text information (e.g., Euretos information)
     euretos_file = st.file_uploader("Upload Euretos Information (Text File)", type=["txt"])
@@ -278,27 +281,15 @@ def main():
                     st.write("Generated Emails:")
                     st.write(fetched_data)
 
-                    # Allow the user to choose between CSV or Excel download
-                    file_format = st.radio("Choose a file format to download", ('CSV', 'Excel'))
-                    if file_format == 'Excel':
-                        # Allow user to download the result as Excel
-                        excel = fetched_data.to_excel(index=False)
-                        st.download_button(
-                            label="Download Generated Emails as Excel",
-                            data=excel,
-                            file_name="generated_emails.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-                    else:
-
-                        # Allow user to download the result as CSV
-                        csv = fetched_data.to_csv(index=False).encode('utf-8')
-                        st.download_button(
+                    
+                    # Allow user to download the result as CSV
+                    csv = fetched_data.to_csv(index=False).encode('utf-8')
+                    st.download_button(
                         label="Download Generated Emails as CSV",
                         data=csv,
                         file_name="generated_emails.csv",
                         mime="text/csv"
-                        )
+                    )
 
 if __name__ == "__main__":
     main()
