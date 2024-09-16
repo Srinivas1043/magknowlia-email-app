@@ -83,8 +83,8 @@ def read_from_file(uploaded_file):
 
 # Function to generate email content using OpenAI GPT
 def generate_email(prompt):
-    messages = [{"role" : "system", "content":"You are a message assistant. Please generate only the body of the email based on publishing industry requirements."}
-                ,{"role" : "user", "content":prompt}]
+    messages = [{"role" : "system", "content": "You are a message assistant. Please generate only the body of the email for an abstract. Do not include any subject, greetings, or closing remarks."}
+                ,{"role" : "user", "content": prompt}]
 
     response = openai.chat.completions.create(
         model="gpt-4o-mini",  # Choose the desired model
@@ -92,6 +92,12 @@ def generate_email(prompt):
     )
     email = response.choices[0].message.content
     return email
+
+# Function to insert author name into the pre-generated email content
+def insert_author_into_email(email_body, author):
+    # You can modify this as needed to fit where the author's name should appear in the email body
+    personalized_email = email_body.replace("{author_name}", author)
+    return personalized_email
 
 # Streamlit app
 def main():
@@ -134,12 +140,12 @@ def main():
                     # First mail prompt
                         # First mail prompt
                         
-                        prompt_mail_1 =  f"""
-                        Below are two pieces of text. The first is the abstract of an article written by {authors}. 
+                        prompt_mail_1 = f"""
+                        Below are two pieces of text. The first is the abstract of an article. 
                         The second is the capabilities of Euretos in aiding their research. 
 
                         Please generate only the core content of the body of an email without any salutations or subject,
-                        with the following structure:
+                        based on the following content:
 
                         1. Abstract Information - Understanding - Summary: 
                         Summarize the abstract information provided below, highlighting the key points and relevance of the research.
@@ -153,6 +159,10 @@ def main():
 
                         Euretos Information:
                         {euretos_information}
+
+                        Use author_name as a placeholder for the author's name.
+                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author without 
+                        any bullet points or lists. Make sure it is a paragraph wise.
                         """
 
                         mail_1 = generate_email(prompt_mail_1)
@@ -168,6 +178,9 @@ def main():
                     
                         Previous Email:
                         {mail_1}
+
+                        Use author_name as a placeholder for the author's name.
+                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         reminder_1 = generate_email(prompt_reminder_1)
 
@@ -179,6 +192,9 @@ def main():
                     
                         Previous Email:
                         {mail_1}
+
+                        Use author_name as a placeholder for the author's name.
+                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         reminder_2 = generate_email(prompt_reminder_2)
 
@@ -201,6 +217,9 @@ def main():
                     
                         Abstract:
                         {abstract}
+
+                        Use author_name as a placeholder for the author's name.
+                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         analytics_mail = generate_email(prompt_mail_on_analytics)
 
@@ -211,6 +230,9 @@ def main():
                     
                         Abstract:
                         {abstract}
+
+                        Use author_name as a placeholder for the author's name.
+                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         KG_mail = generate_email(prompt_mail_on_KG)
 
@@ -221,6 +243,9 @@ def main():
                     
                         Abstract:
                         {abstract}
+
+                        Use author_name as a placeholder for the author's name.
+                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
                         """
                         portal_mail = generate_email(prompt_mail_on_portal)
                         
