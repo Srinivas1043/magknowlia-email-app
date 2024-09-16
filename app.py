@@ -112,7 +112,9 @@ def main():
     if openalex_link and size_requested:
         st.write(f"Fetching {size_requested} records from OpenAlex...")
         fetched_data = fetch_journal_titles_from_openalex(openalex_link, size_requested)
-        if fetched_data is not None:
+        if len(fetched_data) == 0:
+            st.warning("No data found for the given link. Kindly check the link : https://api.openalex.org/works{openalex_link} if there is data showing up!")
+        else:
             st.write("Data fetched successfully!")
             st.write(fetched_data)
             euretos_information = euretos_information
@@ -229,13 +231,6 @@ def main():
                     # Display the dataframe with generated emails
                     st.write("Generated Emails:")
                     st.write(fetched_data)
-
-                    # split the Authors column into individual authors per row 
-                    final_df_split = fetched_data['Authors'].str.split(';', expand=True)
-
-                    # Remove any leading/trailing whitespaces and empty strings
-                    final_df_split = final_df_split.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-                    final_df_split = final_df_split.replace('', None) 
 
                     # Allow user to download the result as CSV
                     csv = final_df_split.to_csv(index=False).encode('utf-8')
