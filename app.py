@@ -278,15 +278,18 @@ def main():
 
                     progress_bar.progress(100)
                     st.success("All emails generated successfully!")
+                    # splitting the authors and authordids into separate rows for each author
+                    df_split = fetched_data.assign(Author=fetched_data['Authors'].str.split(','), 
+                                                   AuthorID = fetched_data['Author IDs'].str.split(',')).explode(['Author', 'AuthorID']).reset_index(drop=True)
                     # Display the dataframe with generated emails
                     st.write("Generated Emails:")
-                    st.write(fetched_data)
+                    st.write(df_split)
 
                     #get today date time and replace : with - to avoid error in file name
                     today = pd.Timestamp.now().strftime('%Y-%m-%d %H-%M-%S')
                     
                     # Allow user to download the result as CSV
-                    csv = fetched_data.to_csv(index=False).encode('utf-8')
+                    csv = df_split.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="Download Generated Emails as CSV",
                         data=csv,
@@ -297,7 +300,7 @@ def main():
                     # Convert DataFrame to Excel in memory
                     to_excel = BytesIO()
                     with pd.ExcelWriter(to_excel, engine='openpyxl', mode='wb') as writer:
-                        fetched_data.to_excel(writer, index=False)
+                        df_split.to_excel(writer, index=False)
                     to_excel.seek(0)  # Go back to the start of the stream
                     
 
