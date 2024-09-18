@@ -278,6 +278,8 @@ def main():
 
                     progress_bar.progress(100)
                     st.success("All emails generated successfully!")
+                    # load while splitting authors into separate rows
+                    st.write("Splitting authors into separate rows...")
                     # splitting the authors and authordids into separate rows for each author
                     df_split = fetched_data.assign(Author=fetched_data['Authors'].str.split(','), 
                                                    AuthorID = fetched_data['Author IDs'].str.split(',')).explode(['Author', 'AuthorID']).reset_index(drop=True)
