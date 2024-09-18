@@ -287,9 +287,7 @@ def main():
                     # drop the authors and author ids columns
                     df_split.drop(['Authors', 'Author IDs'], axis=1, inplace=True)
 
-                    # create a unique id for each row by using md5 and concatination of all the columns
-                    df_split['unique_id'] = df_split.apply(lambda x: hashlib.md5(''.join(x.values).encode('utf-8')).hexdigest(), axis=1)
-                    
+
                     # Display the dataframe with generated emails
                     st.write("Generated Emails:")
                     st.write(df_split)
