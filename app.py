@@ -120,6 +120,42 @@ def main():
     openalex_link = st.text_input("Enter OpenAlex Filtered link")
     # Input for the size of data to be fetched
     size_requested = st.number_input("Enter number of records to fetch", min_value=1, value=10, step=1)
+
+    # Input prompts from the user
+    prompt_mail_1 = st.text_area("Prompt for First Email", 
+                                   "Write the body of an email to author based on the following information:\n\n"
+                                   "1. Abstract Information - Understanding - Summary:\n"
+                                   "2. Company Information + Abstract Information - How Euretos Helps the Research:")
+    
+    prompt_reminder_1 = st.text_area("Prompt for Reminder Email 1", 
+                                       "Write the body of an email to author based on the following information:\n\n"
+                                       "Based on the previous message sent regarding the capabilities of Euretos in helping their research, "
+                                       "please write only the body of the email without salutations based on a shortened version of the previous email.")
+    
+    prompt_reminder_2 = st.text_area("Prompt for Reminder Email 2", 
+                                       "Write the body of an email to author based on the following information:\n\n"
+                                       "Based on the previous message, please write a shorter version of the previous email focusing more on the research "
+                                       "and less on Euretos capabilities.")
+    
+    prompt_mail_on_search = st.text_area("Prompt for Search Email", 
+                                          "Write the body of an email to author based on the following information:\n\n"
+                                          "Please go to https://www.euretos.com/search and describe the search capabilities of Euretos "
+                                          "related to the research described in the abstract.")
+    
+    prompt_mail_on_analytics = st.text_area("Prompt for Analytics Email", 
+                                             "Write the body of an email to author based on the following information:\n\n"
+                                             "Please go to https://www.euretos.com/euretos-analytics and describe the analytical capabilities of Euretos.")
+    
+    prompt_mail_on_KG = st.text_area("Prompt for Knowledge Graph Email", 
+                                       "Write the body of an email to author based on the following information:\n\n"
+                                       "Please go to https://www.euretos.com/knowledge-graph and describe how the knowledge graphs provided by Euretos "
+                                       "can be of use for the research described in the abstract.")
+    
+    prompt_mail_on_portal = st.text_area("Prompt for Portal Email", 
+                                          "Write the body of an email to author based on the following information:\n\n"
+                                          "Please go to https://www.euretos.com/portal and describe the capabilities of the Euretos portal "
+                                          "in relation to the research described in the abstract.")
+
     if openalex_link and size_requested:
         st.write(f"Fetching {size_requested} records from OpenAlex...")
         fetched_data = fetch_journal_titles_from_openalex(openalex_link, size_requested)
@@ -142,125 +178,19 @@ def main():
                         abstract = row['Abstract']
                         authors = row['Authors']
 
-                    # First mail prompt
+                        mail_1 = generate_email(prompt_mail_1.format(abstract=abstract, euretos_information=euretos_information))
                         
-                        prompt_mail_1 = f"""
-                        Write the body of an email to author based on the following information.
-
-                        Below are two pieces of text. The first is the abstract of an article. 
-                        The second is the capabilities of Euretos in aiding their research. 
-
-                        Please generate only the core content of the body of an email without any salutations or subject,
-                        based on the following content:
-
-                        1. Abstract Information - Understanding - Summary: 
-                        Summarize the abstract information provided below, highlighting the key points and relevance of the research.
-
-                        Abstract:
-                        {abstract}
-
-                        2. Company Information + Abstract Information - How Euretos Helps the Research:
-                        Explain how Euretos can specifically help in advancing the research, drawing on the details provided below. 
-                        Focus on how Euretos's capabilities align with the research needs.
-
-                        Euretos Information:
-                        {euretos_information}
-
-                        Note:
-                        1. Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author without 
-                        any bullet points or lists. Make sure it is a paragraph wise.
-                        """
-
-                        mail_1 = generate_email(prompt_mail_1)
-
                         # Update progress
                         progress = int((index + 1) / len(fetched_data) * 100)
                         progress_bar.progress(progress)
 
-                    # Reminder 1
-                        prompt_reminder_1 = f""" 
-                        Write the body of an email to author based on the following information.
+                        reminder_1 = generate_email(prompt_reminder_1.format(previous_email=mail_1))
+                        reminder_2 = generate_email(prompt_reminder_2.format(previous_email=mail_1))
+                        search_mail = generate_email(prompt_mail_on_search.format(abstract=abstract))
+                        analytics_mail = generate_email(prompt_mail_on_analytics.format(abstract=abstract))
+                        KG_mail = generate_email(prompt_mail_on_KG.format(abstract=abstract))
+                        portal_mail = generate_email(prompt_mail_on_portal.format(abstract=abstract))
 
-                        Based on the previous message sent regarding the capabilities of Euretos in helping their research,
-                        please write only the body of the email without salutations based on a shortened version of the previous email.
-                    
-                        Previous Email:
-                        {mail_1}
-
-                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
-                        """
-                        reminder_1 = generate_email(prompt_reminder_1)
-
-
-                        # Reminder 2
-                        prompt_reminder_2 = f""" 
-                        Write the body of an email to author based on the following information.
-
-                        Based on the previous message, please write a shorter version of the previous email focusing more on the research 
-                        and less on Euretos capabilities.
-                    
-                        Previous Email:
-                        {mail_1}
-
-                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
-                        """
-                        reminder_2 = generate_email(prompt_reminder_2)
-
-
-                        # Search mail
-                        prompt_mail_on_search = f"""
-                        Write the body of an email to author based on the following information.
-
-                        Please go to https://www.euretos.com/search and describe the search capabilities of Euretos
-                        related to the research described in the abstract.
-                    
-                        Abstract:
-                        {abstract}
-                        """
-                        search_mail = generate_email(prompt_mail_on_search)
-
-
-                        # Analytics mail
-                        prompt_mail_on_analytics = f""" 
-                        Write the body of an email to author based on the following information.
-
-                        Please go to https://www.euretos.com/euretos-analytics and describe the analytical capabilities of Euretos.
-                        Refer to the research described in the abstract.
-                    
-                        Abstract:
-                        {abstract}
-
-                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
-                        """
-                        analytics_mail = generate_email(prompt_mail_on_analytics)
-
-                        # Knowledge Graph mail
-                        prompt_mail_on_KG = f"""
-                        Write the body of an email to author based on the following information.
-
-                        Please go to https://www.euretos.com/knowledge-graph and describe how the knowledge graphs provided by Euretos 
-                        can be of use for the research described in the abstract.
-                    
-                        Abstract:
-                        {abstract}
-
-                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
-                        """
-                        KG_mail = generate_email(prompt_mail_on_KG)
-
-                        # Portal mail
-                        prompt_mail_on_portal = f"""
-                        Write the body of an email to author based on the following information.
-
-                        Please go to https://www.euretos.com/portal and describe the capabilities of the Euretos portal
-                        in relation to the research described in the abstract.
-                    
-                        Abstract:
-                        {abstract}
-
-                        Please make sure to provide a nice email to the author with the information provided above. Keep it professional and engaging for the author.
-                        """
-                        portal_mail = generate_email(prompt_mail_on_portal)
                         
                     
                
@@ -286,8 +216,6 @@ def main():
 
                     # drop the authors and author ids columns
                     df_split.drop(['Authors', 'Author IDs'], axis=1, inplace=True)
-
-
                     # Display the dataframe with generated emails
                     st.write("Generated Emails:")
                     st.write(df_split)
