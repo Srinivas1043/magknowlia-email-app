@@ -154,9 +154,18 @@ def main():
 
                         mail_1 = generate_email(prompt_mail_1.format(abstract=abstract, euretos_information=euretos_information))
                         
+                        mail_1 = generate_email(prompt_mail_1.format(abstract=abstract, euretos_information=euretos_information))
+                        
                         # Update progress
                         progress = int((index + 1) / len(fetched_data) * 100)
                         progress_bar.progress(progress)
+
+                        reminder_1 = generate_email(prompt_reminder_1.format(previous_email=mail_1))
+                        reminder_2 = generate_email(prompt_reminder_2.format(previous_email=mail_1))
+                        search_mail = generate_email(prompt_mail_on_search.format(abstract=abstract))
+                        analytics_mail = generate_email(prompt_mail_on_analytics.format(abstract=abstract))
+                        KG_mail = generate_email(prompt_mail_on_KG.format(abstract=abstract))
+                        portal_mail = generate_email(prompt_mail_on_portal.format(abstract=abstract))
 
                         reminder_1 = generate_email(prompt_reminder_1.format(previous_email=mail_1))
                         reminder_2 = generate_email(prompt_reminder_2.format(previous_email=mail_1))
