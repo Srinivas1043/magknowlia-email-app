@@ -116,6 +116,7 @@ def main():
         st.write("Euretos Information Uploaded Successfully")
         #st.write(euretos_information)
 
+    # Display the form to input OpenAlex link and number of records to fetch
     # Input OpenAlex Link
     openalex_link = st.text_input("Enter OpenAlex Filtered link")
     # Input for the size of data to be fetched
