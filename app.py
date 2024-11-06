@@ -95,7 +95,7 @@ def generate_email(prompt):
                 {"role" : "user", "content": prompt}]
 
     response = openai.chat.completions.create(
-        model="gpt-4o-mini",  # Choose the desired model
+        model="gpt-4o",  # Choose the desired model
         messages=messages
     )
     email = response.choices[0].message.content
