@@ -91,7 +91,7 @@ def read_from_file(uploaded_file):
 # Function to generate email content using OpenAI GPT
 def generate_email(prompt):
     messages = [{"role" : "system", 
-                "content": "You are a message assistant. Please generate a single or two paragraph body of the email related to the abstract and euretos information provided by the prompt. Ensure the content is in paragraph form without any greetings, numbered sections, or closing remarks."},
+                "content": "You are an email assistant for creating body or the paragraphs. Please generate a single or two paragraph body of the email related to the abstract and euretos information provided by the prompt. Ensure the content is in paragraph form without any greetings, numbered sections, or closing remarks and mention the author's work explicitly. Make it more realistic and engaging."},
                 {"role" : "user", "content": prompt}]
 
     response = openai.chat.completions.create(
