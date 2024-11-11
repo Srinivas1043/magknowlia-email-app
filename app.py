@@ -9,6 +9,10 @@ from pyalex import Works, Authors
 from io import BytesIO
 import time
 
+# Constants for Euretos branding
+PLATFORM_NAME = "Euretos AI Platform"
+PLATFORM_URL = "euretos.com"
+
 # Set the title and description
 st.set_page_config(page_title="Email Generator Tool", page_icon="📧", layout="wide")
 
@@ -27,7 +31,6 @@ def validate_openalex_url(url):
     """Validate if the OpenAlex URL is properly formatted"""
     if not url:
         return False
-    # Add your URL validation logic here
     return True
 
 def fetch_journal_titles_from_openalex(url, size_requested):
@@ -55,7 +58,6 @@ def fetch_journal_titles_from_openalex(url, size_requested):
                         
                     try:
                         ID = work.get('id', 'No ID')
-                        # Fetch abstract with error handling
                         try:
                             abstract = Works()[ID]['abstract'] or "No abstract available"
                         except Exception:
@@ -101,39 +103,134 @@ def read_from_file(uploaded_file):
         st.error(f"Error reading file: {str(e)}")
         return None
 
-def generate_email(prompt, retries=3):
-    """Generate email content using OpenAI with retry mechanism"""
-    for attempt in range(retries):
-        try:
-            messages = [
+def extract_research_context(abstract):
+    """Extract key research elements from abstract"""
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": """Extract key research elements in JSON format:
                 {
-                    "role": "system",
-                    "content": """You are an email assistant for creating professional email body content. 
-                    Generate a concise, engaging paragraph related to the abstract and information provided. 
-                    Focus on the author's work and maintain a professional tone. 
-                    Do not include greetings or closings."""
-                },
-                {"role": "user", "content": prompt}
-            ]
-            
-            response = client.chat.completions.create(
-                model="gpt-4",  # Corrected model name
-                messages=messages,
-                temperature=0.7,
-                max_tokens=500
-            )
-            
-            return response.choices[0].message.content.strip()
+                    "research_area": "main field of study",
+                    "key_finding": "main discovery or conclusion",
+                    "methodology": "key methods used",
+                    "implications": "potential impact"
+                }"""
+            },
+            {"role": "user", "content": abstract}
+        ]
         
-        except Exception as e:
-            if attempt == retries - 1:
-                st.error(f"Failed to generate email after {retries} attempts: {str(e)}")
-                return "Error generating email content."
-            time.sleep(1)  # Wait before retrying
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            temperature=0.3
+        )
+        
+        return eval(response.choices[0].message.content)
+    except Exception:
+        return {
+            "research_area": "the field",
+            "key_finding": "your findings",
+            "methodology": "the methods",
+            "implications": "the implications"
+        }
+
+def generate_contextual_email(paper_info, email_type, euretos_info, previous_email=None):
+    """Generate contextually relevant emails"""
+    title = paper_info['Title']
+    abstract = paper_info['Abstract']
+    research_context = extract_research_context(abstract)
+    
+    email_prompts = {
+        'initial': f"""
+        Create a professional email about the {PLATFORM_NAME} that:
+        1. References specific findings from their paper "{title}" about {research_context['key_finding']}
+        2. Connects our platform's capabilities to their {research_context['research_area']} research
+        3. Mentions how our platform could enhance their specific research methodology
+        4. Uses "in your paper" or "in your research" (never "in the abstract")
+        5. Offers concrete value proposition based on their work
+        
+        Their research abstract:
+        {abstract}
+        
+        Platform information:
+        {euretos_info}
+        """,
+        
+        'reminder': f"""
+        Write a follow-up email that:
+        1. References their paper "{title}" and previous communication
+        2. Maintains specific context about their research on {research_context['key_finding']}
+        3. Adds new value proposition related to their {research_context['research_area']} work
+        4. Is concise and professional
+        
+        Previous email:
+        {previous_email}
+        
+        Research context:
+        {abstract}
+        """,
+        
+        'feature': f"""
+        Write an email about {PLATFORM_NAME} features that:
+        1. Connects our capabilities to their work on {research_context['key_finding']}
+        2. Shows how our platform could enhance their {research_context['methodology']}
+        3. Explains specific benefits for their research direction
+        4. References concrete findings from their paper
+        
+        Their research:
+        {abstract}
+        
+        Feature information:
+        {euretos_info}
+        """
+    }
+    
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": f"""You are writing professional emails about the {PLATFORM_NAME}. 
+                Maintain consistent branding and specific relevance to the researcher's work.
+                Always reference their specific research findings and methodology.
+                Use 'in your paper' or 'in your research' instead of 'in the abstract'.
+                Be concrete and avoid generic statements."""
+            },
+            {"role": "user", "content": email_prompts.get(email_type, email_prompts['initial'])}
+        ]
+        
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500
+        )
+        
+        email_content = response.choices[0].message.content.strip()
+        
+        # Post-processing
+        replacements = {
+            "in the abstract": "in your paper",
+            "Euretos.com": PLATFORM_NAME,
+            "...": ".",
+            "!.": "!",
+            "  ": " ",
+            "etc.": "and similar applications",
+            "e.g.,": "such as"
+        }
+        
+        for old, new in replacements.items():
+            email_content = email_content.replace(old, new)
+        
+        return email_content
+        
+    except Exception as e:
+        st.error(f"Error generating email: {str(e)}")
+        return "Error generating email content."
 
 def main():
     st.title("📧 AI-Powered Email Generator")
-    st.markdown("Generate personalized emails based on research abstracts and Euretos data.")
+    st.markdown(f"Generate personalized emails based on research papers and {PLATFORM_NAME} features.")
 
     # File upload with validation
     euretos_file = st.file_uploader("Upload Euretos Information (Text File)", type=["txt"])
@@ -141,27 +238,14 @@ def main():
     if euretos_file:
         euretos_information = read_from_file(euretos_file)
         if euretos_information:
-            st.success("✅ Euretos Information Uploaded Successfully")
+            st.success(f"✅ {PLATFORM_NAME} Information Uploaded Successfully")
 
     # Input validation
     openalex_link = st.text_input("Enter OpenAlex Filter Query")
     size_requested = st.number_input("Number of records to fetch", min_value=1, max_value=100, value=10)
 
-    # Prompt inputs with clear labels
-    with st.expander("Email Templates"):
-        prompts = {
-            'initial': st.text_area("Initial Email Template", 
-                                  "Based on your paper titled '{title}', I wanted to discuss {abstract}..."),
-            'reminder1': st.text_area("First Reminder Template"),
-            'reminder2': st.text_area("Second Reminder Template"),
-            'search': st.text_area("Search Feature Email Template"),
-            'analytics': st.text_area("Analytics Feature Email Template"),
-            'kg': st.text_area("Knowledge Graph Email Template"),
-            'portal': st.text_area("Portal Feature Email Template")
-        }
-
     if not all([openalex_link, euretos_information]):
-        st.warning("Please provide both OpenAlex query and Euretos information to proceed.")
+        st.warning(f"Please provide both OpenAlex query and {PLATFORM_NAME} information to proceed.")
         return
 
     if st.button("Generate Emails", type="primary"):
@@ -185,19 +269,25 @@ def main():
             progress = (index + 1) / len(data)
             status_text.text(f"Generating emails for paper {index + 1} of {len(data)}...")
             
-            # Format prompts with actual data
-            context = {
-                'title': row['Title'],
-                'abstract': row['Abstract'],
-                'authors': row['Authors'],
-                'euretos': euretos_information
-            }
+            # Generate initial email
+            data.loc[index, 'Mail_1'] = generate_contextual_email(
+                row, 'initial', euretos_information
+            )
             
-            # Generate each type of email
-            for col, prompt_key in zip(email_columns, prompts.keys()):
-                if prompts[prompt_key]:  # Only generate if prompt template is provided
-                    formatted_prompt = prompts[prompt_key].format(**context)
-                    data.loc[index, col] = generate_email(formatted_prompt)
+            # Generate reminder emails
+            data.loc[index, 'Reminder_1'] = generate_contextual_email(
+                row, 'reminder', euretos_information, data.loc[index, 'Mail_1']
+            )
+            data.loc[index, 'Reminder_2'] = generate_contextual_email(
+                row, 'reminder', euretos_information, data.loc[index, 'Reminder_1']
+            )
+            
+            # Generate feature-specific emails
+            for feature, col in zip(['search', 'analytics', 'kg', 'portal'], 
+                                  ['Search_mail', 'Analytics_mail', 'KG_mail', 'Portal_mail']):
+                data.loc[index, col] = generate_contextual_email(
+                    row, 'feature', euretos_information
+                )
             
             progress_bar.progress(progress)
 
