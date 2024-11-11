@@ -8,10 +8,16 @@ import requests
 from pyalex import Works, Authors
 from io import BytesIO
 import time
+from collections import defaultdict
 
-# Constants for Euretos branding
+# Constants for Euretos branding and configuration
 PLATFORM_NAME = "Euretos AI Platform"
-PLATFORM_URL = "euretos.com"
+FEATURE_BENEFITS = {
+    'search': "discover relevant research connections and patterns",
+    'analytics': "gain deeper insights from research data",
+    'kg': "uncover hidden relationships in scientific literature",
+    'portal': "streamline your research workflow"
+}
 
 # Set the title and description
 st.set_page_config(page_title="Email Generator Tool", page_icon="📧", layout="wide")
@@ -29,9 +35,7 @@ except Exception as e:
 
 def validate_openalex_url(url):
     """Validate if the OpenAlex URL is properly formatted"""
-    if not url:
-        return False
-    return True
+    return bool(url and url.strip())
 
 def fetch_journal_titles_from_openalex(url, size_requested):
     """Fetch data from OpenAlex with improved error handling"""
@@ -94,30 +98,21 @@ def fetch_journal_titles_from_openalex(url, size_requested):
         st.error(f"Unexpected error: {str(e)}")
         return None
 
-def read_from_file(uploaded_file):
-    """Read content from uploaded file with error handling"""
-    try:
-        content = uploaded_file.read().decode("utf-8")
-        return content.strip()
-    except Exception as e:
-        st.error(f"Error reading file: {str(e)}")
-        return None
-
-def extract_research_context(abstract):
-    """Extract key research elements from abstract"""
+def extract_research_context(abstract, title):
+    """Extract key research elements using GPT-4"""
     try:
         messages = [
             {
                 "role": "system",
                 "content": """Extract key research elements in JSON format:
                 {
-                    "research_area": "main field of study",
+                    "research_area": "specific field of study",
                     "key_finding": "main discovery or conclusion",
                     "methodology": "key methods used",
-                    "implications": "potential impact"
+                    "impact": "potential applications or implications"
                 }"""
             },
-            {"role": "user", "content": abstract}
+            {"role": "user", "content": f"Title: {title}\n\nAbstract: {abstract}"}
         ]
         
         response = client.chat.completions.create(
@@ -126,107 +121,54 @@ def extract_research_context(abstract):
             temperature=0.3
         )
         
-        return eval(response.choices[0].message.content)
+        context = eval(response.choices[0].message.content)
+        return context
     except Exception:
         return {
-            "research_area": "the field",
-            "key_finding": "your findings",
-            "methodology": "the methods",
-            "implications": "the implications"
+            "research_area": "your field",
+            "key_finding": "your research findings",
+            "methodology": "your research methods",
+            "impact": "potential implications"
         }
 
-def generate_contextual_email(paper_info, email_type, euretos_info, previous_email=None):
-    """Generate contextually relevant emails"""
-    title = paper_info['Title']
-    abstract = paper_info['Abstract']
-    research_context = extract_research_context(abstract)
-    
-    email_prompts = {
-        'initial': f"""
-        Create a professional email about the {PLATFORM_NAME} that:
-        1. References specific findings from their paper "{title}" about {research_context['key_finding']}
-        2. Connects our platform's capabilities to their {research_context['research_area']} research
-        3. Mentions how our platform could enhance their specific research methodology
-        4. Uses "in your paper" or "in your research" (never "in the abstract")
-        5. Offers concrete value proposition based on their work
-        
-        Their research abstract:
-        {abstract}
-        
-        Platform information:
-        {euretos_info}
-        """,
-        
-        'reminder': f"""
-        Write a follow-up email that:
-        1. References their paper "{title}" and previous communication
-        2. Maintains specific context about their research on {research_context['key_finding']}
-        3. Adds new value proposition related to their {research_context['research_area']} work
-        4. Is concise and professional
-        
-        Previous email:
-        {previous_email}
-        
-        Research context:
-        {abstract}
-        """,
-        
-        'feature': f"""
-        Write an email about {PLATFORM_NAME} features that:
-        1. Connects our capabilities to their work on {research_context['key_finding']}
-        2. Shows how our platform could enhance their {research_context['methodology']}
-        3. Explains specific benefits for their research direction
-        4. References concrete findings from their paper
-        
-        Their research:
-        {abstract}
-        
-        Feature information:
-        {euretos_info}
-        """
-    }
-    
+def format_email_content(template, context, research_context, feature_type=None):
+    """Format email content with proper context and post-processing"""
     try:
-        messages = [
-            {
-                "role": "system",
-                "content": f"""You are writing professional emails about the {PLATFORM_NAME}. 
-                Maintain consistent branding and specific relevance to the researcher's work.
-                Always reference their specific research findings and methodology.
-                Use 'in your paper' or 'in your research' instead of 'in the abstract'.
-                Be concrete and avoid generic statements."""
-            },
-            {"role": "user", "content": email_prompts.get(email_type, email_prompts['initial'])}
-        ]
-        
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=500
-        )
-        
-        email_content = response.choices[0].message.content.strip()
-        
-        # Post-processing
-        replacements = {
-            "in the abstract": "in your paper",
-            "Euretos.com": PLATFORM_NAME,
-            "...": ".",
-            "!.": "!",
-            "  ": " ",
-            "etc.": "and similar applications",
-            "e.g.,": "such as"
+        # Combine all context
+        format_context = {
+            'title': context.get('title', ''),
+            'authors': context.get('authors', ''),
+            'research_area': research_context.get('research_area', ''),
+            'key_finding': research_context.get('key_finding', ''),
+            'methodology': research_context.get('methodology', ''),
+            'impact': research_context.get('impact', ''),
+            'feature_benefit': FEATURE_BENEFITS.get(feature_type, 'enhance your research')
         }
         
-        for old, new in replacements.items():
-            email_content = email_content.replace(old, new)
+        # Format template
+        email = template.format(**format_context)
         
-        return email_content
+        # Post-processing
+        email = (email
+                .replace("in the abstract", "in your paper")
+                .replace("euretos.com", PLATFORM_NAME)
+                .replace("...", ".")
+                .replace("!.", "!")
+                .strip())
         
+        return email
     except Exception as e:
-        st.error(f"Error generating email: {str(e)}")
+        st.error(f"Error formatting email: {str(e)}")
         return "Error generating email content."
+
+def read_from_file(uploaded_file):
+    """Read content from uploaded file with error handling"""
+    try:
+        content = uploaded_file.read().decode("utf-8")
+        return content.strip()
+    except Exception as e:
+        st.error(f"Error reading file: {str(e)}")
+        return None
 
 def main():
     st.title("📧 AI-Powered Email Generator")
@@ -244,15 +186,49 @@ def main():
     openalex_link = st.text_input("Enter OpenAlex Filter Query")
     size_requested = st.number_input("Number of records to fetch", min_value=1, max_value=100, value=10)
 
+    # Template configuration
+    with st.expander("Email Templates Configuration"):
+        st.info("Configure your email templates. Use {title}, {authors}, {research_area}, {key_finding}, {methodology}, and {impact} as variables.")
+        
+        templates = {
+            'initial': st.text_area("Initial Email Template", 
+                """I read your paper "{title}" with great interest. Your research in {research_area}, particularly your findings regarding {key_finding}, aligns well with the capabilities of the """ + PLATFORM_NAME + """.
+
+Our platform could enhance your research by providing advanced tools for {research_area}. Would you be interested in exploring how our platform could support your work? I'd be happy to provide you with a free account.""",
+                height=150),
+            
+            'reminder1': st.text_area("First Reminder Template",
+                """I wanted to follow up regarding your paper "{title}" and how the """ + PLATFORM_NAME + """ could support your {research_area} research.
+
+Given your important findings about {key_finding}, I believe our platform's capabilities could be particularly valuable for your work.""",
+                height=150),
+            
+            'reminder2': st.text_area("Second Reminder Template",
+                """I hope you don't mind one final follow-up regarding your research on {key_finding}. Your work in {research_area} could significantly benefit from our platform's capabilities.""",
+                height=150),
+            
+            'search': st.text_area("Search Feature Template",
+                """Based on your research in "{title}", our search capabilities could help you {feature_benefit}, which seems particularly relevant given your focus on {research_area}.""",
+                height=150),
+                
+            'analytics': st.text_area("Analytics Feature Template",
+                """Your work on {key_finding} could benefit from our analytics tools that help researchers {feature_benefit}. This could provide valuable insights for your {research_area} research.""",
+                height=150),
+                
+            'kg': st.text_area("Knowledge Graph Template",
+                """Given your research on {key_finding}, our Knowledge Graph could help you {feature_benefit}. This could be particularly valuable for your work in {research_area}.""",
+                height=150),
+                
+            'portal': st.text_area("Portal Feature Template",
+                """Your research in {research_area} could benefit from our Research Portal, which helps researchers {feature_benefit}. This could be especially valuable for extending your work on {key_finding}.""",
+                height=150)
+        }
+
     if not all([openalex_link, euretos_information]):
         st.warning(f"Please provide both OpenAlex query and {PLATFORM_NAME} information to proceed.")
         return
 
     if st.button("Generate Emails", type="primary"):
-        if not validate_openalex_url(openalex_link):
-            st.error("Invalid OpenAlex query format. Please check your input.")
-            return
-
         data = fetch_journal_titles_from_openalex(openalex_link, size_requested)
         if data is None or len(data) == 0:
             st.error("No data found. Please check your OpenAlex query.")
@@ -269,25 +245,40 @@ def main():
             progress = (index + 1) / len(data)
             status_text.text(f"Generating emails for paper {index + 1} of {len(data)}...")
             
-            # Generate initial email
-            data.loc[index, 'Mail_1'] = generate_contextual_email(
-                row, 'initial', euretos_information
+            # Extract research context
+            research_context = extract_research_context(row['Abstract'], row['Title'])
+            
+            # Generate each type of email
+            context = {
+                'title': row['Title'],
+                'authors': row['Authors'],
+                'abstract': row['Abstract']
+            }
+            
+            # Initial and reminder emails
+            data.loc[index, 'Mail_1'] = format_email_content(
+                templates['initial'], context, research_context
+            )
+            data.loc[index, 'Reminder_1'] = format_email_content(
+                templates['reminder1'], context, research_context
+            )
+            data.loc[index, 'Reminder_2'] = format_email_content(
+                templates['reminder2'], context, research_context
             )
             
-            # Generate reminder emails
-            data.loc[index, 'Reminder_1'] = generate_contextual_email(
-                row, 'reminder', euretos_information, data.loc[index, 'Mail_1']
+            # Feature-specific emails
+            data.loc[index, 'Search_mail'] = format_email_content(
+                templates['search'], context, research_context, 'search'
             )
-            data.loc[index, 'Reminder_2'] = generate_contextual_email(
-                row, 'reminder', euretos_information, data.loc[index, 'Reminder_1']
+            data.loc[index, 'Analytics_mail'] = format_email_content(
+                templates['analytics'], context, research_context, 'analytics'
             )
-            
-            # Generate feature-specific emails
-            for feature, col in zip(['search', 'analytics', 'kg', 'portal'], 
-                                  ['Search_mail', 'Analytics_mail', 'KG_mail', 'Portal_mail']):
-                data.loc[index, col] = generate_contextual_email(
-                    row, 'feature', euretos_information
-                )
+            data.loc[index, 'KG_mail'] = format_email_content(
+                templates['kg'], context, research_context, 'kg'
+            )
+            data.loc[index, 'Portal_mail'] = format_email_content(
+                templates['portal'], context, research_context, 'portal'
+            )
             
             progress_bar.progress(progress)
 
