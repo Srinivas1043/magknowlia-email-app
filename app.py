@@ -53,6 +53,85 @@ With a free trial, you can explore how the {platform_name} Knowledge Graph might
 If you're interested, we'd be happy to provide you with a free trial account to experience how the {platform_name} Portal can support your ongoing {research_area} research."""
 }
 
+# Set the title and description
+st.set_page_config(page_title="Email Generator Tool", page_icon="📧", layout="wide")
+
+# Initialize OpenAI client
+try:
+    openai_api_key = st.secrets["OPENAI_API_KEY"]
+    if not openai_api_key:
+        st.error("OpenAI API key is not set. Please check your environment variables or GitHub Secrets.")
+        st.stop()
+    client = OpenAI(api_key=openai_api_key)
+except Exception as e:
+    st.error(f"Error initializing OpenAI client: {str(e)}")
+    st.stop()
+
+def validate_openalex_url(url):
+    """Validate if the OpenAlex URL is properly formatted"""
+    return bool(url and url.strip())
+
+def fetch_journal_titles_from_openalex(url, size_requested):
+    """Fetch data from OpenAlex with improved error handling"""
+    try:
+        base_url = "https://api.openalex.org/works"
+        all_data = []
+        params = {
+            'page': 1,
+            'filter': url
+        }
+        
+        with st.spinner(f'Fetching data from OpenAlex (0/{size_requested} records)...'):
+            while len(all_data) < size_requested:
+                response = requests.get(base_url, params=params)
+                response.raise_for_status()
+                
+                data = response.json()
+                if not data.get('results'):
+                    break
+                
+                for work in data['results']:
+                    if len(all_data) >= size_requested:
+                        break
+                        
+                    try:
+                        ID = work.get('id', 'No ID')
+                        try:
+                            abstract = Works()[ID]['abstract'] or "No abstract available"
+                        except Exception:
+                            abstract = "Abstract not available"
+                            
+                        work_data = {
+                            'id': ID,
+                            'Title': work.get('title', 'No title available'),
+                            'Journal': work.get('primary_location', {}).get('source', {}).get('display_name', 'No Journal Name'),
+                            'Publication Year': work.get('publication_year', 'No Year'),
+                            'Publication Date': work.get('publication_date', 'No Date'),
+                            'Abstract': abstract,
+                            'Authors': ', '.join(a['author']['display_name'] for a in work.get('authorships', [])),
+                            'Author IDs': ', '.join(a['author']['id'] for a in work.get('authorships', [])),
+                            'Affiliations': ', '.join(
+                                a.get('institutions', [{}])[0].get('display_name', 'No Affiliation')
+                                if a.get('institutions') else 'No Affiliation'
+                                for a in work.get('authorships', [])
+                            )
+                        }
+                        all_data.append(work_data)
+                        st.spinner(f'Fetching data from OpenAlex ({len(all_data)}/{size_requested} records)...')
+                    except Exception as e:
+                        st.warning(f"Error processing work {ID}: {str(e)}")
+                        continue
+                
+                params['page'] += 1
+                
+        return pd.DataFrame(all_data)
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error connecting to OpenAlex API: {str(e)}")
+        return None
+    except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
+        return None
+
 def extract_research_context(abstract, title):
     """Extract deeper research elements with enhanced prompt for GPT."""
     try:
@@ -74,9 +153,9 @@ def extract_research_context(abstract, title):
             {"role": "user", "content": f"Title: {title}\n\nAbstract: {abstract}"}
         ]
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4",
             messages=messages,
-            temperature=0.25
+            temperature=0.3
         )
         context = eval(response.choices[0].message.content)
         return context
@@ -109,6 +188,7 @@ def format_email_content(template_key, paper_context, research_context):
     }
     
     return template.format(**format_context)
+
 def read_from_file(uploaded_file):
     """Read content from uploaded file with error handling"""
     try:
@@ -167,37 +247,18 @@ def main():
             # Extract research context
             research_context = extract_research_context(row['Abstract'], row['Title'])
             
-            # Generate each type of email
+            # Generate emails for each type
             context = {
                 'title': row['Title'],
                 'authors': row['Authors'],
                 'abstract': row['Abstract']
             }
             
-            # Initial and reminder emails
-            data.loc[index, 'Mail_1'] = format_email_content(
-                'initial', context, research_context
-            )
-            data.loc[index, 'Reminder_1'] = format_email_content(
-                'reminder1', context, research_context
-            )
-            data.loc[index, 'Reminder_2'] = format_email_content(
-                'reminder2', context, research_context
-            )
-            
-            # Feature-specific emails
-            data.loc[index, 'Search_mail'] = format_email_content(
-                'search', context, research_context, 'search'
-            )
-            data.loc[index, 'Analytics_mail'] = format_email_content(
-                'analytics', context, research_context, 'analytics'
-            )
-            data.loc[index, 'KG_mail'] = format_email_content(
-                'kg', context, research_context, 'kg'
-            )
-            data.loc[index, 'Portal_mail'] = format_email_content(
-                'portal', context, research_context, 'portal'
-            )
+            email_types = ['initial', 'reminder1', 'reminder2', 'search', 'analytics', 'kg', 'portal']
+            for email_type in email_types:
+                data.loc[index, f'{email_type}_mail'] = format_email_content(
+                    email_type, context, research_context
+                )
             
             progress_bar.progress(progress)
 
