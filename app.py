@@ -19,6 +19,27 @@ FEATURE_BENEFITS = {
     'portal': "streamline your research workflow"
 }
 
+# Predefined email templates
+EMAIL_TEMPLATES = {
+    'initial': """I read your paper "{title}" with great interest. Your research in {research_area}, particularly your findings regarding {key_finding}, aligns well with the capabilities of the """ + PLATFORM_NAME + """.
+
+Our platform could enhance your research by providing advanced tools for {research_area}. Would you be interested in exploring how our platform could support your work? I'd be happy to provide you with a free account.""",
+
+    'reminder1': """I wanted to follow up regarding your paper "{title}" and how the """ + PLATFORM_NAME + """ could support your {research_area} research.
+
+Given your important findings about {key_finding}, I believe our platform's capabilities could be particularly valuable for your work.""",
+
+    'reminder2': """I hope you don't mind one final follow-up regarding your research on {key_finding}. Your work in {research_area} could significantly benefit from our platform's capabilities.""",
+
+    'search': """Based on your research in "{title}", our search capabilities could help you {feature_benefit}, which seems particularly relevant given your focus on {research_area}.""",
+
+    'analytics': """Your work on {key_finding} could benefit from our analytics tools that help researchers {feature_benefit}. This could provide valuable insights for your {research_area} research.""",
+
+    'kg': """Given your research on {key_finding}, our Knowledge Graph could help you {feature_benefit}. This could be particularly valuable for your work in {research_area}.""",
+
+    'portal': """Your research in {research_area} could benefit from our Research Portal, which helps researchers {feature_benefit}. This could be especially valuable for extending your work on {key_finding}."""
+}
+
 # Set the title and description
 st.set_page_config(page_title="Email Generator Tool", page_icon="📧", layout="wide")
 
@@ -131,9 +152,12 @@ def extract_research_context(abstract, title):
             "impact": "potential implications"
         }
 
-def format_email_content(template, context, research_context, feature_type=None):
+def format_email_content(template_key, context, research_context, feature_type=None):
     """Format email content with proper context and post-processing"""
     try:
+        # Get template from predefined templates
+        template = EMAIL_TEMPLATES[template_key]
+        
         # Combine all context
         format_context = {
             'title': context.get('title', ''),
@@ -186,43 +210,17 @@ def main():
     openalex_link = st.text_input("Enter OpenAlex Filter Query")
     size_requested = st.number_input("Number of records to fetch", min_value=1, max_value=100, value=10)
 
-    # Template configuration
-    with st.expander("Email Templates Configuration"):
-        st.info("Configure your email templates. Use {title}, {authors}, {research_area}, {key_finding}, {methodology}, and {impact} as variables.")
-        
-        templates = {
-            'initial': st.text_area("Initial Email Template", 
-                """I read your paper "{title}" with great interest. Your research in {research_area}, particularly your findings regarding {key_finding}, aligns well with the capabilities of the """ + PLATFORM_NAME + """.
-
-Our platform could enhance your research by providing advanced tools for {research_area}. Would you be interested in exploring how our platform could support your work? I'd be happy to provide you with a free account.""",
-                height=150),
-            
-            'reminder1': st.text_area("First Reminder Template",
-                """I wanted to follow up regarding your paper "{title}" and how the """ + PLATFORM_NAME + """ could support your {research_area} research.
-
-Given your important findings about {key_finding}, I believe our platform's capabilities could be particularly valuable for your work.""",
-                height=150),
-            
-            'reminder2': st.text_area("Second Reminder Template",
-                """I hope you don't mind one final follow-up regarding your research on {key_finding}. Your work in {research_area} could significantly benefit from our platform's capabilities.""",
-                height=150),
-            
-            'search': st.text_area("Search Feature Template",
-                """Based on your research in "{title}", our search capabilities could help you {feature_benefit}, which seems particularly relevant given your focus on {research_area}.""",
-                height=150),
-                
-            'analytics': st.text_area("Analytics Feature Template",
-                """Your work on {key_finding} could benefit from our analytics tools that help researchers {feature_benefit}. This could provide valuable insights for your {research_area} research.""",
-                height=150),
-                
-            'kg': st.text_area("Knowledge Graph Template",
-                """Given your research on {key_finding}, our Knowledge Graph could help you {feature_benefit}. This could be particularly valuable for your work in {research_area}.""",
-                height=150),
-                
-            'portal': st.text_area("Portal Feature Template",
-                """Your research in {research_area} could benefit from our Research Portal, which helps researchers {feature_benefit}. This could be especially valuable for extending your work on {key_finding}.""",
-                height=150)
-        }
+    # Optional template preview
+    if st.checkbox("Preview Email Templates"):
+        with st.expander("Email Templates"):
+            for template_name, template_content in EMAIL_TEMPLATES.items():
+                st.subheader(template_name.title())
+                st.text_area(
+                    f"{template_name} template",
+                    value=template_content,
+                    height=150,
+                    disabled=True
+                )
 
     if not all([openalex_link, euretos_information]):
         st.warning(f"Please provide both OpenAlex query and {PLATFORM_NAME} information to proceed.")
@@ -238,9 +236,6 @@ Given your important findings about {key_finding}, I believe our platform's capa
         status_text = st.empty()
 
         # Generate emails with progress tracking
-        email_columns = ['Mail_1', 'Reminder_1', 'Reminder_2', 'Search_mail', 
-                        'Analytics_mail', 'KG_mail', 'Portal_mail']
-        
         for index, row in data.iterrows():
             progress = (index + 1) / len(data)
             status_text.text(f"Generating emails for paper {index + 1} of {len(data)}...")
@@ -257,27 +252,27 @@ Given your important findings about {key_finding}, I believe our platform's capa
             
             # Initial and reminder emails
             data.loc[index, 'Mail_1'] = format_email_content(
-                templates['initial'], context, research_context
+                'initial', context, research_context
             )
             data.loc[index, 'Reminder_1'] = format_email_content(
-                templates['reminder1'], context, research_context
+                'reminder1', context, research_context
             )
             data.loc[index, 'Reminder_2'] = format_email_content(
-                templates['reminder2'], context, research_context
+                'reminder2', context, research_context
             )
             
             # Feature-specific emails
             data.loc[index, 'Search_mail'] = format_email_content(
-                templates['search'], context, research_context, 'search'
+                'search', context, research_context, 'search'
             )
             data.loc[index, 'Analytics_mail'] = format_email_content(
-                templates['analytics'], context, research_context, 'analytics'
+                'analytics', context, research_context, 'analytics'
             )
             data.loc[index, 'KG_mail'] = format_email_content(
-                templates['kg'], context, research_context, 'kg'
+                'kg', context, research_context, 'kg'
             )
             data.loc[index, 'Portal_mail'] = format_email_content(
-                templates['portal'], context, research_context, 'portal'
+                'portal', context, research_context, 'portal'
             )
             
             progress_bar.progress(progress)
