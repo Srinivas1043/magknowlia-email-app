@@ -1,175 +1,242 @@
 import streamlit as st
 import pandas as pd
 import os
-import openai
+from dotenv import load_dotenv
+from openai import OpenAI
 import pyalex
 import requests
-from pyalex import Works
+from pyalex import Works, Authors
 from io import BytesIO
-from dotenv import load_dotenv
 import time
+from collections import defaultdict
 
 # Constants for Euretos branding and configuration
-PLATFORM_NAME = "Euretos AI Platform"
-FEATURE_BENEFITS = {
-    'search': "discover relevant research connections and patterns",
-    'analytics': "gain deeper insights from research data",
-    'kg': "uncover hidden relationships in scientific literature",
-    'portal': "streamline your research workflow"
+PLATFORM_NAME = "Euretos"
+PLATFORM_DESCRIPTION = {
+    'general': "a platform designed to accelerate molecular research through advanced data integration and analytics",
+    'search': "advanced search functionality, designed to help you quickly locate relevant molecular and biomedical data",
+    'analytics': "powerful tools to help researchers analyze molecular data, visualize disease pathways, and identify potential biomarkers and drug targets",
+    'kg': "designed to help you visualize complex molecular interactions, disease pathways, and genetic relationships",
+    'portal': "a centralized research hub, enabling easy access to powerful tools for data analysis, knowledge exploration, and research management"
 }
 
-# Set the title and description
-st.set_page_config(page_title="Email Generator Tool", page_icon="📧", layout="wide")
+# Enhanced email templates matching the example format
+EMAIL_TEMPLATES = {
+    'initial': """Congratulations on your recent study, "{title}"! Your findings on {key_finding} are not only impressive but also significant for advancing {research_area}.
 
-# Initialize OpenAI client
-try:
-    openai_api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-    if not openai_api_key:
-        st.error("OpenAI API key is not set. Please check your environment variables or GitHub Secrets.")
-        st.stop()
-    openai.api_key = openai_api_key
-except Exception as e:
-    st.error(f"Error initializing OpenAI client: {str(e)}")
-    st.stop()
+We'd like to introduce you to {platform_name}, {platform_description}. {platform_name} offers tools specifically tailored for {potential_applications}—all features that could extend and enhance your ongoing work on {research_focus}.
 
-def fetch_journal_titles_from_openalex(url, size_requested):
-    """Fetch data from OpenAlex API."""
-    try:
-        base_url = "https://api.openalex.org/works"
-        all_data = []
-        params = {'page': 1, 'filter': url}
+With {platform_name}, you can {specific_benefit}. We'd be delighted to offer you a free account to trial the platform and see how it might support your {research_area} research further.""",
 
-        with st.spinner(f'Fetching data from OpenAlex (0/{size_requested} records)...'):
-            while len(all_data) < size_requested:
-                response = requests.get(base_url, params=params)
-                response.raise_for_status()
-                data = response.json()
+    'reminder1': """Just a quick follow-up on our previous email about {platform_name} and its potential to support your {research_area} research. Given your recent work on {key_finding}, we believe the platform could offer valuable insights and tools for {potential_applications}.
 
-                if not data.get('results'):
-                    break
+Feel free to reach out if you'd like to discuss this further or take advantage of a free trial account to explore {platform_name} for yourself!""",
 
-                for work in data['results']:
-                    if len(all_data) >= size_requested:
-                        break
+    'reminder2': """We know how busy you must be, so we'll keep this brief. We previously reached out about {platform_name}, a platform that could add valuable dimensions to your {research_area} research by allowing deeper exploration of {potential_applications} relevant to your recent findings on {key_finding}.
 
-                    try:
-                        ID = work.get('id', 'No ID')
-                        abstract = Works()[ID].get('abstract', 'Abstract not available')
-                        work_data = {
-                            'id': ID,
-                            'Title': work.get('title', 'No title available'),
-                            'Journal': work.get('primary_location', {}).get('source', {}).get('display_name', 'No Journal Name'),
-                            'Publication Year': work.get('publication_year', 'No Year'),
-                            'Abstract': abstract,
-                            'Authors': ', '.join(a['author']['display_name'] for a in work.get('authorships', []))
-                        }
-                        all_data.append(work_data)
-                    except Exception as e:
-                        st.warning(f"Error processing work {ID}: {str(e)}")
-                        continue
+Apologies if this email is a little intrusive—we just didn't want you to miss out on the opportunity to test {platform_name} through a free account. If you have a moment to explore, we'd love to support your next steps in {research_area} research.""",
 
-                params['page'] += 1
+    'search': """If you're looking to enhance your {research_area} research, our {platform_name} platform could be a valuable resource. {platform_name} offers {platform_description}. With the ability to search for specific {search_focus}, {platform_name} enables researchers to retrieve detailed, structured insights that could complement your work on {key_finding}.
 
-        return pd.DataFrame(all_data)
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error connecting to OpenAlex API: {str(e)}")
-        return None
+Feel free to explore {platform_name}'s search capabilities with a free account. We believe it could significantly support your {research_area} study by giving you easy access to data that could propel your research further.""",
+
+    'analytics': """In your work on {research_focus} like {key_finding}, the ability to perform in-depth data analysis is crucial. {platform_name} Analytics provides {platform_description}. With {platform_name}, you can access structured analytics specifically designed for advanced research needs, allowing for a more comprehensive investigation into complex biological data.
+
+If you'd like to experience the benefits of {platform_name} Analytics in your {research_area} research, we'd be happy to set you up with a free account to try it out.""",
+
+    'kg': """In {research_area} research, understanding the broader molecular context can make all the difference. The {platform_name} Knowledge Graph is {platform_description}. For a study like yours, focused on {research_focus}, the Knowledge Graph could enable a more holistic approach to investigating {potential_applications}.
+
+With a free trial, you can explore how the {platform_name} Knowledge Graph might enrich your research on {research_area}. We'd be delighted to support your exploration of these tools.""",
+
+    'portal': """For {research_area} researchers like yourself, keeping all relevant data and tools accessible in one place can streamline workflows. The {platform_name} Portal offers {platform_description}. Designed to simplify complex research, the portal could serve as a valuable resource as you continue exploring {research_focus} like {key_finding}.
+
+If you're interested, we'd be happy to provide you with a free trial account to experience how the {platform_name} Portal can support your ongoing {research_area} research."""
+}
 
 def extract_research_context(abstract, title):
-    """Extract detailed research elements with an enhanced prompt for GPT-4."""
+    """Extract deeper research elements with enhanced prompt for GPT."""
     try:
         messages = [
             {
                 "role": "system",
-                "content": """You are a professional assistant helping to create personalized outreach emails for researchers based on their abstracts. Extract the following details in a conversational style:
-                - A brief summary of the research focus and its significance.
-                - The key findings or discoveries from the research.
-                - How the findings could be applied in practical scenarios or extended further.
-                - A suggested feature from Euretos (e.g., Analytics, Knowledge Graph, Search) that would be most beneficial for this research.
-                - An engaging and conversational sentence highlighting why the Euretos platform could be valuable for this research.
-                Provide the output in a structured JSON format with the following fields:
+                "content": """You are an expert in analyzing scientific research papers. Extract detailed elements of the research paper, focusing on molecular and biomedical aspects. Provide output in the following JSON format:
                 {
-                    "research_summary": "A brief summary of the research",
-                    "key_finding": "Main discovery or conclusion",
-                    "potential_application": "How the findings could be applied",
-                    "suggested_platform_feature": "Recommended Euretos feature",
-                    "engaging_sentence": "A sentence introducing Euretos as a valuable tool for this research"
+                    "research_area": "specific field of study (e.g., Alzheimer's research, cancer research)",
+                    "key_finding": "main discovery or biomarker/molecular finding",
+                    "research_focus": "specific focus area (e.g., biomarkers, molecular pathways)",
+                    "potential_applications": "specific ways the research could be extended using molecular analysis",
+                    "search_focus": "specific entities that researchers might want to search for",
+                    "specific_benefit": "concrete benefit of using the platform for this research"
                 }
-                """
+                
+                Be specific and technical in your extraction, focusing on molecular and biomedical aspects that would be relevant for a data analytics platform."""
             },
             {"role": "user", "content": f"Title: {title}\n\nAbstract: {abstract}"}
         ]
-
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
+        response = client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
-            temperature=0.3
+            temperature=0.25
         )
         context = eval(response.choices[0].message.content)
         return context
-    except Exception:
+    except Exception as e:
+        st.error(f"Error in context extraction: {str(e)}")
         return {
-            "research_summary": "A study exploring an important area of research.",
-            "key_finding": "Significant findings related to the research topic.",
-            "potential_application": "Potential ways the findings can be applied.",
-            "suggested_platform_feature": "general features",
-            "engaging_sentence": "Euretos could be a valuable resource to support your research goals."
+            "research_area": "molecular research",
+            "key_finding": "your recent findings",
+            "research_focus": "molecular mechanisms",
+            "potential_applications": "investigating molecular interactions and pathways",
+            "search_focus": "interactions, pathways, and molecular entities",
+            "specific_benefit": "explore molecular interactions and pathways relevant to your research"
         }
 
-def generate_flexible_email(context, research_context):
-    """Create a free-form, conversational email based on the research context."""
+def format_email_content(template_key, paper_context, research_context):
+    """Format email content with enhanced context."""
+    template = EMAIL_TEMPLATES.get(template_key, EMAIL_TEMPLATES['initial'])
+    
+    format_context = {
+        'platform_name': PLATFORM_NAME,
+        'platform_description': PLATFORM_DESCRIPTION.get(template_key, PLATFORM_DESCRIPTION['general']),
+        'title': paper_context.get('title', ''),
+        'authors': paper_context.get('authors', ''),
+        'research_area': research_context.get('research_area', ''),
+        'key_finding': research_context.get('key_finding', ''),
+        'research_focus': research_context.get('research_focus', ''),
+        'potential_applications': research_context.get('potential_applications', ''),
+        'search_focus': research_context.get('search_focus', ''),
+        'specific_benefit': research_context.get('specific_benefit', '')
+    }
+    
+    return template.format(**format_context)
+def read_from_file(uploaded_file):
+    """Read content from uploaded file with error handling"""
     try:
-        title = context.get('title', 'your recent study')
-        authors = context.get('authors', 'Researcher')
-        research_summary = research_context.get('research_summary', 'This study focuses on an important research area.')
-        key_finding = research_context.get('key_finding', 'There are notable findings in this research.')
-        potential_application = research_context.get('potential_application', 'The findings have potential applications.')
-        suggested_feature = research_context.get('suggested_platform_feature', 'features of the Euretos platform')
-        engaging_sentence = research_context.get('engaging_sentence', 'Euretos could be a valuable addition to your research toolkit.')
-
-        email_body = (
-            f"Dear {authors},\n\n"
-            f"Congratulations on your recent study, \"{title}\"! Your research on {research_summary} "
-            f"is quite impressive, especially your findings regarding {key_finding}.\n\n"
-            f"We believe the Euretos platform could offer valuable tools to help you further explore and apply these findings. "
-            f"For instance, our {suggested_feature} could be particularly beneficial for {potential_application}. "
-            f"{engaging_sentence}\n\n"
-            f"I’d be happy to set up a free account for you to explore these features and see how they might support your ongoing research. "
-            f"Please let me know if you’d be interested in discussing this further.\n\n"
-            f"Best regards,\n[Your Name]\nEuretos AI Team"
-        )
-
-        return email_body
+        content = uploaded_file.read().decode("utf-8")
+        return content.strip()
     except Exception as e:
-        st.error(f"Error generating email content: {str(e)}")
-        return "An error occurred while generating the email content."
+        st.error(f"Error reading file: {str(e)}")
+        return None
 
 def main():
     st.title("📧 AI-Powered Email Generator")
+    st.markdown(f"Generate personalized emails based on research papers and {PLATFORM_NAME} features.")
+
+    # File upload with validation
     euretos_file = st.file_uploader("Upload Euretos Information (Text File)", type=["txt"])
+    euretos_information = None
+    if euretos_file:
+        euretos_information = read_from_file(euretos_file)
+        if euretos_information:
+            st.success(f"✅ {PLATFORM_NAME} Information Uploaded Successfully")
+
+    # Input validation
     openalex_link = st.text_input("Enter OpenAlex Filter Query")
     size_requested = st.number_input("Number of records to fetch", min_value=1, max_value=100, value=10)
 
-    if st.button("Generate Emails"):
+    # Optional template preview
+    if st.checkbox("Preview Email Templates"):
+        with st.expander("Email Templates"):
+            for template_name, template_content in EMAIL_TEMPLATES.items():
+                st.subheader(template_name.title())
+                st.text_area(
+                    f"{template_name} template",
+                    value=template_content,
+                    height=150,
+                    disabled=True
+                )
+
+    if not all([openalex_link, euretos_information]):
+        st.warning(f"Please provide both OpenAlex query and {PLATFORM_NAME} information to proceed.")
+        return
+
+    if st.button("Generate Emails", type="primary"):
         data = fetch_journal_titles_from_openalex(openalex_link, size_requested)
         if data is None or len(data) == 0:
             st.error("No data found. Please check your OpenAlex query.")
             return
 
         progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        # Generate emails with progress tracking
         for index, row in data.iterrows():
             progress = (index + 1) / len(data)
+            status_text.text(f"Generating emails for paper {index + 1} of {len(data)}...")
+            
+            # Extract research context
             research_context = extract_research_context(row['Abstract'], row['Title'])
-            context = {'title': row['Title'], 'authors': row['Authors']}
-            data.loc[index, 'Personalized_Email'] = generate_flexible_email(context, research_context)
+            
+            # Generate each type of email
+            context = {
+                'title': row['Title'],
+                'authors': row['Authors'],
+                'abstract': row['Abstract']
+            }
+            
+            # Initial and reminder emails
+            data.loc[index, 'Mail_1'] = format_email_content(
+                'initial', context, research_context
+            )
+            data.loc[index, 'Reminder_1'] = format_email_content(
+                'reminder1', context, research_context
+            )
+            data.loc[index, 'Reminder_2'] = format_email_content(
+                'reminder2', context, research_context
+            )
+            
+            # Feature-specific emails
+            data.loc[index, 'Search_mail'] = format_email_content(
+                'search', context, research_context, 'search'
+            )
+            data.loc[index, 'Analytics_mail'] = format_email_content(
+                'analytics', context, research_context, 'analytics'
+            )
+            data.loc[index, 'KG_mail'] = format_email_content(
+                'kg', context, research_context, 'kg'
+            )
+            data.loc[index, 'Portal_mail'] = format_email_content(
+                'portal', context, research_context, 'portal'
+            )
+            
             progress_bar.progress(progress)
 
         progress_bar.progress(100)
+        status_text.text("Email generation complete! ✨")
+
+        # Process results
+        df_split = (data.assign(Author=data['Authors'].str.split(','),
+                              AuthorID=data['Author IDs'].str.split(','))
+                   .explode(['Author', 'AuthorID'])
+                   .reset_index(drop=True))
+        
+        df_split.drop(['Authors', 'Author IDs'], axis=1, inplace=True)
+
+        # Export options
         st.success("✅ All emails generated successfully!")
         timestamp = pd.Timestamp.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-        csv = data.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download as CSV", data=csv, file_name=f"generated_emails_{timestamp}.csv", mime="text/csv")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            csv = df_split.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download as CSV",
+                data=csv,
+                file_name=f"generated_emails_{timestamp}.csv",
+                mime="text/csv"
+            )
+        
+        with col2:
+            buffer = BytesIO()
+            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                df_split.to_excel(writer, index=False)
+            
+            st.download_button(
+                label="📥 Download as Excel",
+                data=buffer.getvalue(),
+                file_name=f"generated_emails_{timestamp}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 if __name__ == "__main__":
     main()
